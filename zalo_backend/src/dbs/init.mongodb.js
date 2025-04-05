@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 mongoose.set('strictQuery', true)
 
-const connectString = `mongodb://localhost:27017/chat-app`
+const connectString = `mongodb+srv://lehoangcuong0202:2b7xyKExg14RXBpr@cluster0.ofqs1is.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
 
 class Database {
     constructor() {

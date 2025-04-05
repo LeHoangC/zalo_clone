@@ -106,6 +106,18 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('typing', (data) => {
+        const receiverSocketId = Object.keys(users).find(
+            (socketId) => users[socketId] === data.receiver
+        );
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit('user_typing', {
+                sender: data.sender,
+                isTyping: data.isTyping
+            });
+        }
+    });
+
 
 
     socket.on('disconnect', () => {

@@ -12,6 +12,9 @@ const ChatWindow = ({ chat, currentUsername, currentUserData }) => {
     const messagesEndRef = useRef(null)
     const fileInputRef = useRef(null)
 
+    const [isUserTyping, setIsUserTyping] = useState(false)
+    const typingTimeoutRef = useRef(null)
+
     const [peer, setPeer] = useState(null) // Peer instance cho WebRTC
     const [callActive, setCallActive] = useState(false) // Trạng thái cuộc gọi
 
@@ -99,6 +102,52 @@ const ChatWindow = ({ chat, currentUsername, currentUserData }) => {
     useEffect(() => {
         scrollToBottom()
     }, [messages])
+
+    const handleTyping = (e) => {
+        setNewMessage(e.target.value)
+
+        // Gửi sự kiện typing khi người dùng bắt đầu nhập
+        socket.emit('typing', {
+            sender: currentUserData._id,
+            receiver: chat._id,
+            isTyping: true,
+        })
+
+        // Clear timeout trước đó nếu có
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current)
+        }
+
+        // Set timeout mới để báo khi người dùng ngừng gõ
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.emit('typing', {
+                sender: currentUserData._id,
+                receiver: chat._id,
+                isTyping: false,
+            })
+        }, 2000) // 2 giây sau khi người dùng ngừng gõ
+    }
+
+    useEffect(() => {
+        socket.on('user_typing', (data) => {
+            if (chat && chat._id === data.sender) {
+                setIsUserTyping(data.isTyping)
+            }
+        })
+
+        return () => {
+            socket.off('user_typing')
+        }
+    }, [chat])
+
+    // Thêm clean-up cho timeout khi component unmount
+    useEffect(() => {
+        return () => {
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current)
+            }
+        }
+    }, [])
 
     // Bắt đầu cuộc gọi
     const startCall = async (isVideo = false) => {
@@ -288,6 +337,19 @@ const ChatWindow = ({ chat, currentUsername, currentUserData }) => {
                         </div>
                     </div>
                 ))}
+                {isUserTyping && (
+                    <div className="flex justify-start">
+                        <div className="max-w-xs">
+                            <div className="bg-gray-200 text-gray-700 rounded-lg p-2 shadow-sm">
+                                <div className="typing-indicator">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <div ref={messagesEndRef} />
             </div>
 
@@ -359,7 +421,7 @@ const ChatWindow = ({ chat, currentUsername, currentUserData }) => {
                         placeholder={`Nhập @, tin nhắn tới ${chat.name}`}
                         className="flex-1 p-2 rounded-lg border focus:outline-none focus:border-blue-500"
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={handleTyping}
                     />
                     <button type="submit" className="p-2 text-blue-500">
                         <Send size={20} />
